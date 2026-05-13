@@ -1,0 +1,63 @@
+/*
+ * Description: LED toggle using External Interrupt 0 (INT0).
+ * This version includes explicit memory address references for 
+ * the ATmega328P hardware registers.
+ */
+
+#define F_CPU 16000000UL
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+// Register Address Reference for ATmega328P:
+// DDRD   -> 0x2A (Direction)
+// PORTD  -> 0x2B (Output/Pull-up)
+// EICRA  -> 0x69 (Interrupt Control)
+// EIMSK  -> 0x3D (Interrupt Mask)
+// SREG   -> 0x5F (Status Register)
+
+volatile uint8_t ledState = 0;
+
+// ISR triggered by the button on PD2
+ISR(INT0_vect)
+{
+    ledState ^= 1; // Toggle state
+
+    if (ledState)
+    {
+        // Set PD7 HIGH (Address 0x2B bit 7)
+        PORTD |= (1 << PD7);
+    }
+    else
+    {
+        // Set PD7 LOW (Address 0x2B bit 7)
+        PORTD &= ~(1 << PD7);
+    }
+}
+
+int main(void)
+{
+    // 1. Configure PD7 as Output (Address 0x2A)
+    DDRD |= (1 << PD7);
+
+    // 2. Configure PD2 as Input (Address 0x2A)
+    DDRD &= ~(1 << PD2);
+
+    // 3. Enable Pull-up on PD2 (Address 0x2B)
+    // Keeps pin HIGH until button connects it to GND
+    PORTD |= (1 << PD2);
+
+    // 4. Set Trigger to Falling Edge (Address 0x69)
+    // ISC01 = 1, ISC00 = 0
+    EICRA |= (1 << ISC01);
+
+    // 5. Enable External Interrupt 0 (Address 0x3D)
+    EIMSK |= (1 << INT0);
+
+    // 6. Global Interrupt Enable (Address 0x5F)
+    sei();
+
+    while (1)
+    {
+        // CPU waits here; ISR handles the toggle logic
+    }
+}
